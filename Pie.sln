@@ -1,16 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pie", "Pie\Pie.csproj", "{B09ED936-BC60-4587-9AFD-0400A5EB2141}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pie.Utils", "Pie.Utils\Pie.Utils.csproj", "{ECC33571-2DC2-4151-9253-163E162E915A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pie.ShaderCompiler", "Pie.ShaderCompiler\Pie.ShaderCompiler.csproj", "{DDC165C5-B3D9-4083-9855-43047DA30956}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pie.Audio", "Pie.Audio\Pie.Audio.csproj", "{CF5E9358-1548-4102-9D8A-4070A1E1F53D}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pie.Windowing", "Pie.Windowing\Pie.Windowing.csproj", "{E0EF6E4A-E0DC-4E02-BAAB-4A8CBA3EAA1C}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pie.Extensions.SilkWindowing", "Pie.Extensions.SilkWindowing\Pie.Extensions.SilkWindowing.csproj", "{FDBF3E89-EBB3-4A49-A54D-57FAF932FB38}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pie.Framework", "Pie.Framework\Pie.Framework.csproj", "{8E0A9D62-C0C3-4FA8-90C8-A4976FB4A373}"
 EndProject
@@ -22,10 +14,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{B09ED936-BC60-4587-9AFD-0400A5EB2141}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B09ED936-BC60-4587-9AFD-0400A5EB2141}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B09ED936-BC60-4587-9AFD-0400A5EB2141}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B09ED936-BC60-4587-9AFD-0400A5EB2141}.Release|Any CPU.Build.0 = Release|Any CPU
 		{ECC33571-2DC2-4151-9253-163E162E915A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{ECC33571-2DC2-4151-9253-163E162E915A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ECC33571-2DC2-4151-9253-163E162E915A}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -34,18 +22,6 @@ Global
 		{DDC165C5-B3D9-4083-9855-43047DA30956}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DDC165C5-B3D9-4083-9855-43047DA30956}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DDC165C5-B3D9-4083-9855-43047DA30956}.Release|Any CPU.Build.0 = Release|Any CPU
-		{CF5E9358-1548-4102-9D8A-4070A1E1F53D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{CF5E9358-1548-4102-9D8A-4070A1E1F53D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{CF5E9358-1548-4102-9D8A-4070A1E1F53D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{CF5E9358-1548-4102-9D8A-4070A1E1F53D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E0EF6E4A-E0DC-4E02-BAAB-4A8CBA3EAA1C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E0EF6E4A-E0DC-4E02-BAAB-4A8CBA3EAA1C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E0EF6E4A-E0DC-4E02-BAAB-4A8CBA3EAA1C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E0EF6E4A-E0DC-4E02-BAAB-4A8CBA3EAA1C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{FDBF3E89-EBB3-4A49-A54D-57FAF932FB38}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{FDBF3E89-EBB3-4A49-A54D-57FAF932FB38}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{FDBF3E89-EBB3-4A49-A54D-57FAF932FB38}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{FDBF3E89-EBB3-4A49-A54D-57FAF932FB38}.Release|Any CPU.Build.0 = Release|Any CPU
 		{8E0A9D62-C0C3-4FA8-90C8-A4976FB4A373}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8E0A9D62-C0C3-4FA8-90C8-A4976FB4A373}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8E0A9D62-C0C3-4FA8-90C8-A4976FB4A373}.Release|Any CPU.ActiveCfg = Release|Any CPU
