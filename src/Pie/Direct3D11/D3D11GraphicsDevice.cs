@@ -3,15 +3,16 @@ using System.Drawing;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using Pie.ShaderCompiler;
-using SharpGen.Runtime;
-using Vortice.Direct3D;
+using TerraFX.Interop.DirectX;
+using TerraFX.Interop.Windows;
+using static TerraFX.Interop.DirectX.D3D_FEATURE_LEVEL;
+using static TerraFX.Interop.DirectX.DirectX;
+using static TerraFX.Interop.DirectX.DXGI;
+using static TerraFX.Interop.DirectX.DXGI_SWAP_CHAIN_FLAG;
+using static TerraFX.Interop.DirectX.DXGI_SWAP_EFFECT;
 using Color = System.Drawing.Color;
+using DXGI_SAMPLE_DESC = TerraFX.Interop.DirectX.DXGI_SAMPLE_DESC;
 using Size = System.Drawing.Size;
-using Vortice.Direct3D11;
-using Vortice.DXGI;
-using Vortice.Mathematics;
-using DxgiFormat = Vortice.DXGI.Format;
-using static Vortice.Direct3D11.D3D11;
 
 namespace Pie.Direct3D11;
 
@@ -20,27 +21,29 @@ internal sealed unsafe class D3D11GraphicsDevice : GraphicsDevice
     private DxgiFormat _colorFormat;
     private DxgiFormat? _depthFormat;
     
-    private ID3D11Device _device;
-    private ID3D11DeviceContext _context;
+    private ID3D11Device* _device;
+    private ID3D11DeviceContext* _context;
     
-    private IDXGISwapChain _swapChain;
-    private ID3D11Texture2D _colorTexture;
-    private ID3D11Texture2D _depthStencilTexture;
-    private ID3D11RenderTargetView _colorTargetView;
-    private ID3D11DepthStencilView _depthStencilTargetView;
+    private IDXGISwapChain* _swapChain;
+    private ID3D11Texture2D* _colorTexture;
+    private ID3D11Texture2D* _depthStencilTexture;
+    private ID3D11RenderTargetView* _colorTargetView;
+    private ID3D11DepthStencilView* _depthStencilTargetView;
 
     private D3D11Framebuffer _currentFramebuffer;
 
     public D3D11GraphicsDevice(IntPtr hwnd, Size winSize, GraphicsDeviceOptions options)
     {
         bool debug = options.Debug;
-        if (debug && !SdkLayersAvailable())
+        
+        // TODO: Reimplement this.
+        /*if (debug && !SdkLayersAvailable())
         {
             debug = false;
             PieLog.Log(LogType.Warning, "Debug has been enabled however no SDK layers have been found. Direct3D debug has therefore been disabled.");
-        }
+        }*/
 
-        FeatureLevel[] levels = new [] { FeatureLevel.Level_11_0 };
+        D3D_FEATURE_LEVEL level = D3D_FEATURE_LEVEL_11_0;
 
         DeviceCreationFlags flags = DeviceCreationFlags.BgraSupport | DeviceCreationFlags.Singlethreaded;
         if (debug)
@@ -49,15 +52,20 @@ internal sealed unsafe class D3D11GraphicsDevice : GraphicsDevice
         _colorFormat = options.ColorBufferFormat.ToDxgiFormat(false);
         _depthFormat = options.DepthStencilBufferFormat?.ToDxgiFormat(false);
 
-        SwapChainDescription swapChainDescription = new SwapChainDescription()
+        DXGI_SWAP_CHAIN_DESC swapChainDescription = new()
         {
-            Flags = SwapChainFlags.AllowTearing | SwapChainFlags.AllowModeSwitch,
+            Flags = (uint) (DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING | DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH),
             BufferCount = 2,
-            BufferDescription = new ModeDescription(winSize.Width, winSize.Height, format: _colorFormat),
-            BufferUsage = Usage.RenderTargetOutput,
-            OutputWindow = hwnd,
-            SampleDescription = new SampleDescription(1, 0),
-            SwapEffect = SwapEffect.FlipDiscard,
+            BufferDesc = new DXGI_MODE_DESC()
+            {
+                Width = (uint) winSize.Width,
+                Height = (uint) winSize.Height,
+                Format = _colorFormat
+            },
+            BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
+            OutputWindow = (HWND) hwnd,
+            SampleDesc = new DXGI_SAMPLE_DESC(1, 0),
+            SwapEffect = DXGI_SWAP_EFFECT_DISCARD,
             Windowed = true
         };
 

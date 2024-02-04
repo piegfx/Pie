@@ -1,44 +1,60 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
-using Vortice.Direct3D;
-using Vortice.Direct3D11;
+using TerraFX.Interop.DirectX;
+using static Pie.Direct3D11.DxUtils;
 
 namespace Pie.Direct3D11;
 
-internal sealed class D3D11InputLayout : InputLayout
+[SuppressMessage("Interoperability", "CA1416:Validate platform compatibility")]
+internal sealed unsafe class D3D11InputLayout : InputLayout
 {
-    public readonly ID3D11InputLayout Layout;
+    public readonly ID3D11InputLayout* Layout;
 
-    public D3D11InputLayout(ID3D11Device device, InputLayoutDescription[] descriptions)
+    public D3D11InputLayout(ID3D11Device* device, InputLayoutDescription[] descriptions)
     {
-        InputElementDescription[] iedesc = new InputElementDescription[descriptions.Length];
-        for (int i = 0; i < iedesc.Length; i++)
+        uint numDescriptions = (uint) descriptions.Length;
+        
+        D3D11_INPUT_ELEMENT_DESC* iedesc = stackalloc D3D11_INPUT_ELEMENT_DESC[descriptions.Length];
+        fixed (byte* pTexCoordStr = "TEXCOORD"u8)
         {
-            ref InputElementDescription d = ref iedesc[i];
-            ref InputLayoutDescription desc = ref descriptions[i];
-
-            Vortice.DXGI.Format fmt = desc.Format.ToDxgiFormat(false);
-            
-            d = new InputElementDescription()
+            for (uint i = 0; i < numDescriptions; i++)
             {
-                SemanticName = "TEXCOORD",
-                SemanticIndex = i,
-                AlignedByteOffset = (int) desc.Offset,
-                Format = fmt,
-                Slot = (int) desc.Slot,
-                Classification = (InputClassification) desc.InputType,
-                InstanceDataStepRate = (int) desc.InputType
-            };
+                ref D3D11_INPUT_ELEMENT_DESC d = ref iedesc[i];
+                ref InputLayoutDescription desc = ref descriptions[i];
+
+                DXGI_FORMAT fmt = desc.Format.ToDxgiFormat(false);
+
+                d = new D3D11_INPUT_ELEMENT_DESC
+                {
+                    SemanticName = (sbyte*) pTexCoordStr,
+                    SemanticIndex = i,
+                    AlignedByteOffset = desc.Offset,
+                    Format = fmt,
+                    InputSlot = desc.Slot,
+                    InputSlotClass = (D3D11_INPUT_CLASSIFICATION) desc.InputType,
+                    InstanceDataStepRate = (uint) desc.InputType
+                };
+            }
         }
 
         Descriptions = descriptions;
 
-        Blob dummyBlob = GenerateDummyShader(descriptions);
-        Layout = device.CreateInputLayout(iedesc, dummyBlob);
-        dummyBlob.Dispose();
+        ID3DBlob* dummyBlob = GenerateDummyShader(descriptions);
+
+        ID3D11InputLayout* layout;
+        if (Failed(device->CreateInputLayout(iedesc, numDescriptions, dummyBlob->GetBufferPointer(),
+                dummyBlob->GetBufferSize(), &layout)))
+        {
+            throw new PieException("Failed to create input layout.");
+        }
+
+        Layout = layout;
+        
+        dummyBlob->Release();
     }
 
-    private Blob GenerateDummyShader(InputLayoutDescription[] descriptions)
+    private ID3DBlob* GenerateDummyShader(InputLayoutDescription[] descriptions)
     {
         StringBuilder dummyShader = new StringBuilder();
         dummyShader.AppendLine("struct DummyInput {");
@@ -178,7 +194,7 @@ internal sealed class D3D11InputLayout : InputLayout
 
         dummyShader.AppendLine("}; void main(DummyInput input) {}");
 
-        return D3D11Shader.CompileShader(Encoding.UTF8.GetBytes(dummyShader.ToString()), "main", "vs_5_0");
+        return D3D11Shader.CompileShader(Encoding.UTF8.GetBytes(dummyShader.ToString()), "main"u8, "vs_5_0"u8);
     }
 
     public override bool IsDisposed { get; protected set; }
@@ -190,6 +206,6 @@ internal sealed class D3D11InputLayout : InputLayout
         if (IsDisposed)
             return;
         IsDisposed = true;
-        Layout.Dispose();
+        Layout->Release();
     }
 }

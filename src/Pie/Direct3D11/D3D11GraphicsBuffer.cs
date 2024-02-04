@@ -1,88 +1,109 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using Vortice.Direct3D11;
-using Vortice.Mathematics;
+using TerraFX.Interop.DirectX;
+using static TerraFX.Interop.DirectX.D3D11_BIND_FLAG;
+using static TerraFX.Interop.DirectX.D3D11_CPU_ACCESS_FLAG;
+using static TerraFX.Interop.DirectX.D3D11_RESOURCE_MISC_FLAG;
+using static TerraFX.Interop.DirectX.D3D11_USAGE;
+using static Pie.Direct3D11.DxUtils;
+using static TerraFX.Interop.DirectX.D3D11_MAP;
 
 namespace Pie.Direct3D11;
 
-internal sealed class D3D11GraphicsBuffer : GraphicsBuffer
+[SuppressMessage("Interoperability", "CA1416:Validate platform compatibility")]
+internal sealed unsafe class D3D11GraphicsBuffer : GraphicsBuffer
 {
-    private ID3D11DeviceContext _context;
-    private BufferType _type;
-    private bool _dynamic;
+    private readonly ID3D11DeviceContext* _context;
+    private readonly BufferType _type;
+    private readonly bool _dynamic;
     
     public override bool IsDisposed { get; protected set; }
 
-    public ID3D11Buffer Buffer;
+    public readonly ID3D11Buffer* Buffer;
 
-    public unsafe D3D11GraphicsBuffer(ID3D11Device device, ID3D11DeviceContext context, BufferType type, uint sizeInBytes, void* data, bool dynamic)
+    public D3D11GraphicsBuffer(ID3D11Device* device, ID3D11DeviceContext* context, BufferType type, uint sizeInBytes, void* data, bool dynamic)
     {
         _context = context;
         
         _dynamic = dynamic;
         _type = type;
-        
-        BindFlags flags;
+
+        D3D11_BIND_FLAG flags;
 
         switch (type)
         {
             case BufferType.VertexBuffer:
-                flags = BindFlags.VertexBuffer;
+                flags = D3D11_BIND_VERTEX_BUFFER;
                 PieMetrics.VertexBufferCount++;
                 break;
             case BufferType.IndexBuffer:
-                flags = BindFlags.IndexBuffer;
+                flags = D3D11_BIND_INDEX_BUFFER;
                 PieMetrics.IndexBufferCount++;
                 break;
             case BufferType.UniformBuffer:
-                flags = BindFlags.ConstantBuffer;
+                flags = D3D11_BIND_CONSTANT_BUFFER;
                 PieMetrics.UniformBufferCount++;
                 break;
             case BufferType.ShaderStorageBuffer:
-                flags = BindFlags.ShaderResource;
+                flags = D3D11_BIND_SHADER_RESOURCE;
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(type), type, null);
         }
 
-        BufferDescription description = new BufferDescription()
+        D3D11_BUFFER_DESC description = new()
         {
-            BindFlags = flags,
-            ByteWidth = (int) sizeInBytes,
-            Usage = dynamic ? ResourceUsage.Dynamic : ResourceUsage.Default,
-            CPUAccessFlags = dynamic ? CpuAccessFlags.Write : CpuAccessFlags.None
+            BindFlags = (uint) flags,
+            ByteWidth = sizeInBytes,
+            Usage = dynamic ? D3D11_USAGE_DYNAMIC : D3D11_USAGE_DEFAULT,
+            CPUAccessFlags = dynamic ? (uint) D3D11_CPU_ACCESS_WRITE : 0
         };
 
         if (type == BufferType.ShaderStorageBuffer)
         {
-            description.MiscFlags = ResourceOptionFlags.BufferStructured;
+            description.MiscFlags = (uint) D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
             description.StructureByteStride = 1;
         }
 
-        SubresourceData subData = new SubresourceData(data);
+        D3D11_SUBRESOURCE_DATA subData = new()
+        {
+            pSysMem = data
+        };
 
-        Buffer = device.CreateBuffer(description, data == null ? null : subData);
+        //Buffer = device.CreateBuffer(description, data == null ? null : subData);
+        ID3D11Buffer* buffer;
+        if (Failed(device->CreateBuffer(&description, data == null ? null : &subData, &buffer)))
+            throw new PieException("Failed to create buffer.");
+
+        Buffer = buffer;
     }
 
-    public unsafe void Update(uint offsetInBytes, uint sizeInBytes, void* data)
+    public void Update(uint offsetInBytes, uint sizeInBytes, void* data)
     {
         if (_dynamic)
         {
-            Vortice.Direct3D11.MappedSubresource subresource =
-                _context.Map(Buffer, 0, Vortice.Direct3D11.MapMode.WriteDiscard);
-            Unsafe.CopyBlock((byte*) subresource.DataPointer + (int) offsetInBytes, data, sizeInBytes);
-            _context.Unmap(Buffer);
+            D3D11_MAPPED_SUBRESOURCE subresource;
+            if (Failed(_context->Map((ID3D11Resource*) Buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &subresource)))
+                throw new PieException("Failed to map buffer.");
+            
+            Unsafe.CopyBlock((byte*) subresource.pData + (int) offsetInBytes, data, sizeInBytes);
+            _context->Unmap((ID3D11Resource*) Buffer, 0);
         }
         else
         {
-            _context.UpdateSubresource(Buffer, 0,
-                new Box((int) offsetInBytes, 0, 0, (int) (sizeInBytes + offsetInBytes), 1, 1), (nint) data, 0, 0);
+            D3D11_BOX box = new D3D11_BOX((int) offsetInBytes, 0, 0, (int) (sizeInBytes + offsetInBytes), 1, 1);
+            _context->UpdateSubresource((ID3D11Resource*) Buffer, 0, &box, data, 0, 0);
         }
     }
 
     public override void Dispose()
     {
-        Buffer.Dispose();
+        if (IsDisposed)
+            return;
+        IsDisposed = true;
+        
+        Buffer->Release();
         switch (_type)
         {
             case BufferType.VertexBuffer:
@@ -101,12 +122,15 @@ internal sealed class D3D11GraphicsBuffer : GraphicsBuffer
 
     internal override MappedSubresource Map(MapMode mode)
     {
-        Vortice.Direct3D11.MappedSubresource resource = _context.Map(Buffer, 0, mode.ToDx11MapMode());
-        return new MappedSubresource(resource.DataPointer);
+        D3D11_MAPPED_SUBRESOURCE subresource;
+        if (Failed(_context->Map((ID3D11Resource*) Buffer, 0, mode.ToDx11MapMode(), 0, &subresource)))
+            throw new PieException("Failed to map buffer.");
+        
+        return new MappedSubresource((IntPtr) subresource.pData);
     }
 
     internal override void Unmap()
     {
-        _context.Unmap(Buffer);
+        _context->Unmap((ID3D11Resource*) Buffer, 0);
     }
 }

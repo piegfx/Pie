@@ -1,36 +1,41 @@
 ﻿using System;
-using Vortice.Direct3D11;
+using System.Diagnostics.CodeAnalysis;
+using TerraFX.Interop.DirectX;
+using static TerraFX.Interop.DirectX.D3D11_CULL_MODE;
+using static TerraFX.Interop.DirectX.D3D11_FILL_MODE;
+using static Pie.Direct3D11.DxUtils;
 
 namespace Pie.Direct3D11;
 
-internal sealed class D3D11RasterizerState : RasterizerState
+[SuppressMessage("Interoperability", "CA1416:Validate platform compatibility")]
+internal sealed unsafe class D3D11RasterizerState : RasterizerState
 {
-    public ID3D11RasterizerState State;
+    public readonly ID3D11RasterizerState* State;
     
     public override bool IsDisposed { get; protected set; }
 
     public override RasterizerStateDescription Description { get; }
 
-    public D3D11RasterizerState(ID3D11Device device, RasterizerStateDescription description)
+    public D3D11RasterizerState(ID3D11Device* device, RasterizerStateDescription description)
     {
         Description = description;
 
-        CullMode cullMode = description.CullFace switch
+       D3D11_CULL_MODE cullMode = description.CullFace switch
         {
-            CullFace.None => CullMode.None,
-            CullFace.Front => CullMode.Front,
-            CullFace.Back => CullMode.Back,
+            CullFace.None => D3D11_CULL_NONE,
+            CullFace.Front => D3D11_CULL_FRONT,
+            CullFace.Back => D3D11_CULL_BACK,
             _ => throw new ArgumentOutOfRangeException()
         };
 
-        Vortice.Direct3D11.FillMode fm = description.FillMode switch
+        D3D11_FILL_MODE fm = description.FillMode switch
         {
-            FillMode.Solid => Vortice.Direct3D11.FillMode.Solid,
-            FillMode.Wireframe => Vortice.Direct3D11.FillMode.Wireframe,
+            FillMode.Solid => D3D11_FILL_SOLID,
+            FillMode.Wireframe => D3D11_FILL_WIREFRAME,
             _ => throw new ArgumentOutOfRangeException()
         };
 
-        RasterizerDescription desc = new RasterizerDescription()
+        D3D11_RASTERIZER_DESC desc = new()
         {
             CullMode = cullMode,
             FrontCounterClockwise = description.CullDirection == CullDirection.CounterClockwise,
@@ -38,7 +43,11 @@ internal sealed class D3D11RasterizerState : RasterizerState
             ScissorEnable = description.ScissorTest
         };
 
-        State = device.CreateRasterizerState(desc);
+        ID3D11RasterizerState* state;
+        if (Failed(device->CreateRasterizerState(&desc, &state)))
+            throw new PieException("Failed to create rasterizer state.");
+
+        State = state;
     }
 
     public override void Dispose()
@@ -46,6 +55,6 @@ internal sealed class D3D11RasterizerState : RasterizerState
         if (IsDisposed)
             return;
         IsDisposed = true;
-        State.Dispose();
+        State->Release();
     }
 }

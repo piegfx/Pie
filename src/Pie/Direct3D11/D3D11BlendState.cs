@@ -1,35 +1,44 @@
 using System;
-using Vortice.Direct3D11;
+using System.Diagnostics.CodeAnalysis;
+using TerraFX.Interop.DirectX;
+using static TerraFX.Interop.DirectX.D3D11_BLEND;
+using static TerraFX.Interop.DirectX.D3D11_BLEND_OP;
+using static Pie.Direct3D11.DxUtils;
 
 namespace Pie.Direct3D11;
 
-internal sealed class D3D11BlendState : BlendState
+[SuppressMessage("Interoperability", "CA1416:Validate platform compatibility")]
+internal sealed unsafe class D3D11BlendState : BlendState
 {
     public override bool IsDisposed { get; protected set; }
 
-    public ID3D11BlendState State;
+    public readonly ID3D11BlendState* State;
     
-    public D3D11BlendState(ID3D11Device device, BlendStateDescription description)
+    public D3D11BlendState(ID3D11Device* device, BlendStateDescription description)
     {
         Description = description;
 
-        BlendDescription desc = new BlendDescription();
+        D3D11_BLEND_DESC desc = new();
         desc.IndependentBlendEnable = false;
         desc.AlphaToCoverageEnable = false;
-        desc.RenderTarget[0] = new RenderTargetBlendDescription()
+        desc.RenderTarget[0] = new()
         {
             BlendEnable = description.Enabled,
-            SourceBlend = GetBlendFromBlendType(description.Source),
-            DestinationBlend = GetBlendFromBlendType(description.Destination),
-            BlendOperation = GetOpFromOp(description.BlendOperation),
-            SourceBlendAlpha = GetBlendFromBlendType(description.SourceAlpha),
-            DestinationBlendAlpha = GetBlendFromBlendType(description.DestinationAlpha),
-            BlendOperationAlpha = GetOpFromOp(description.AlphaBlendOperation),
+            SrcBlend = GetBlendFromBlendType(description.Source),
+            DestBlend = GetBlendFromBlendType(description.Destination),
+            BlendOp = GetOpFromOp(description.BlendOperation),
+            SrcBlendAlpha = GetBlendFromBlendType(description.SourceAlpha),
+            DestBlendAlpha = GetBlendFromBlendType(description.DestinationAlpha),
+            BlendOpAlpha = GetOpFromOp(description.AlphaBlendOperation),
             // TODO: This should be a safe operation, as the two enums are compatible. But it's going to be better to not cast, so that should probably be done at some point.
-            RenderTargetWriteMask = (ColorWriteEnable) description.ColorWriteMask
+            RenderTargetWriteMask = (byte) description.ColorWriteMask
         };
 
-        State = device.CreateBlendState(desc);
+        ID3D11BlendState* state;
+        if (Failed(device->CreateBlendState(&desc, &state)))
+            throw new PieException("Failed to create blend state.");
+        
+        State = state;
     }
 
     public override BlendStateDescription Description { get; }
@@ -39,36 +48,36 @@ internal sealed class D3D11BlendState : BlendState
         if (IsDisposed)
             return;
         IsDisposed = true;
-        State.Dispose();
+        State->Release();
     }
 
-    private static Blend GetBlendFromBlendType(BlendType type)
+    private static D3D11_BLEND GetBlendFromBlendType(BlendType type)
     {
         return type switch
         {
-            BlendType.Zero => Blend.Zero,
-            BlendType.One => Blend.One,
-            BlendType.SrcColor => Blend.SourceColor,
-            BlendType.OneMinusSrcColor => Blend.InverseSourceColor,
-            BlendType.DestColor => Blend.DestinationColor,
-            BlendType.OneMinusDestColor => Blend.InverseDestinationColor,
-            BlendType.SrcAlpha => Blend.SourceAlpha,
-            BlendType.OneMinusSrcAlpha => Blend.InverseSourceAlpha,
-            BlendType.DestAlpha => Blend.DestinationAlpha,
-            BlendType.OneMinusDestAlpha => Blend.InverseDestinationAlpha,
+            BlendType.Zero => D3D11_BLEND_ZERO,
+            BlendType.One => D3D11_BLEND_ONE,
+            BlendType.SrcColor => D3D11_BLEND_SRC_COLOR,
+            BlendType.OneMinusSrcColor => D3D11_BLEND_INV_SRC_COLOR,
+            BlendType.DestColor => D3D11_BLEND_DEST_COLOR,
+            BlendType.OneMinusDestColor => D3D11_BLEND_INV_DEST_COLOR,
+            BlendType.SrcAlpha => D3D11_BLEND_SRC_ALPHA,
+            BlendType.OneMinusSrcAlpha => D3D11_BLEND_INV_SRC_ALPHA,
+            BlendType.DestAlpha => D3D11_BLEND_DEST_ALPHA,
+            BlendType.OneMinusDestAlpha => D3D11_BLEND_INV_DEST_ALPHA,
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
         };
     }
 
-    private static Vortice.Direct3D11.BlendOperation GetOpFromOp(BlendOperation operation)
+    private static D3D11_BLEND_OP GetOpFromOp(BlendOperation operation)
     {
         return operation switch
         {
-            BlendOperation.Add => Vortice.Direct3D11.BlendOperation.Add,
-            BlendOperation.Subtract => Vortice.Direct3D11.BlendOperation.Subtract,
-            BlendOperation.ReverseSubtract => Vortice.Direct3D11.BlendOperation.ReverseSubtract,
-            BlendOperation.Min => Vortice.Direct3D11.BlendOperation.Min,
-            BlendOperation.Max => Vortice.Direct3D11.BlendOperation.Max,
+            BlendOperation.Add => D3D11_BLEND_OP_ADD,
+            BlendOperation.Subtract => D3D11_BLEND_OP_SUBTRACT,
+            BlendOperation.ReverseSubtract => D3D11_BLEND_OP_REV_SUBTRACT,
+            BlendOperation.Min => D3D11_BLEND_OP_MIN,
+            BlendOperation.Max => D3D11_BLEND_OP_MAX,
             _ => throw new ArgumentOutOfRangeException(nameof(operation), operation, null)
         };
     }
